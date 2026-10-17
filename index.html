@@ -142,6 +142,17 @@ body { margin: 0; -webkit-tap-highlight-color: transparent; }
   const GROW = 1.17;         // speed multiplier each step
   const MAXMULT = 4;
   const ID_PREFIX = 'truthrally-v1-';
+  // Relay servers (Metered, free plan) so phones on mobile data can still connect.
+  const TURN_USER = '54142b40939ce45052a976ac';
+  const TURN_PASS = 'pcbehkdS8wbJ0kPh';
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    { urls: 'turn:global.relay.metered.ca:80', username: TURN_USER, credential: TURN_PASS },
+    { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: TURN_USER, credential: TURN_PASS },
+    { urls: 'turn:global.relay.metered.ca:443', username: TURN_USER, credential: TURN_PASS },
+    { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: TURN_USER, credential: TURN_PASS }
+  ];
   const IDEAS = ["Who was your first crush?", "What's the last thing you searched?", "What's a secret you've never told me?", "What do you really think of me?", "What's your most embarrassing moment?"];
 
   const root = document.getElementById('root');
@@ -214,6 +225,7 @@ body { margin: 0; -webkit-tap-highlight-color: transparent; }
     return s;
   }
   function netReady() { return typeof window.Peer === 'function'; }
+  async function getIce() { return ICE_SERVERS; }
   function send(obj) { if (conn && conn.open) { try { conn.send(obj); } catch (e) {} } }
   function pushMe(patch) {
     Object.assign(meState, patch);
@@ -247,15 +259,18 @@ body { margin: 0; -webkit-tap-highlight-color: transparent; }
       leave(); L.err = 'The game ended because your friend left or lost connection.'; go('home');
     }
   }
-  function createGame(attempt = 0) {
+  async function createGame(attempt = 0) {
     if (!netReady()) { L.err = "Couldn't load the online connection. Check your internet and reload."; render(); return; }
     leave();
+    L.mode = 'online'; L.role = 'host'; L.screen = 'connecting'; render();
+    const iceServers = await getIce();
+    if (L.screen !== 'connecting' || L.role !== 'host') return;
     const code = newCode();
     L.mode = 'online'; L.role = 'host'; L.code = code;
     Object.assign(meState, { role: 'host', name: L.name.trim(), q: L.q.trim(), ready: 0, paddle: 0.5, answer: null });
     Object.assign(G, freshSim());
     L.screen = 'connecting'; render();
-    peer = new Peer(ID_PREFIX + code, { debug: 0 });
+    peer = new Peer(ID_PREFIX + code, { debug: 0, config: { iceServers } });
     peer.on('open', () => { go('lobby'); startLoop(); });
     peer.on('connection', c => {
       if (conn && conn.open) { c.on('open', () => { try { c.send({ t: 'busy' }); } catch (e) {} setTimeout(() => c.close(), 400); }); return; }
@@ -267,19 +282,21 @@ body { margin: 0; -webkit-tap-highlight-color: transparent; }
     });
     peer.on('disconnected', () => { try { peer && !peer.destroyed && peer.reconnect(); } catch (e) {} });
   }
-  function joinGame(code) {
+  async function joinGame(code) {
     if (!netReady()) { L.err = "Couldn't load the online connection. Check your internet and reload."; render(); return; }
     leave();
     L.mode = 'online'; L.role = 'guest'; L.code = code;
     Object.assign(meState, { role: 'guest', name: L.name.trim(), q: L.q.trim(), ready: 0, paddle: 0.5, answer: null });
     L.screen = 'connecting'; render();
-    peer = new Peer({ debug: 0 });
+    const iceServers = await getIce();
+    if (L.screen !== 'connecting' || L.role !== 'guest') return;
+    peer = new Peer({ debug: 0, config: { iceServers } });
     let opened = false;
     peer.on('open', () => {
       const c = peer.connect(ID_PREFIX + code, { reliable: true, serialization: 'json' });
       attach(c);
       c.on('open', () => { opened = true; go('lobby'); startLoop(); });
-      setTimeout(() => { if (!opened && L.screen === 'connecting') { leave(); L.joinPrefill = code; L.err = "Couldn't reach that game. Make sure your friend still has it open, then try again. Wi-Fi works best."; go('join'); } }, 15000);
+      setTimeout(() => { if (!opened && L.screen === 'connecting') { leave(); L.joinPrefill = code; L.err = "Couldn't reach that game. Make sure your friend still has it open, then try again."; go('join'); } }, 25000);
     });
     peer.on('error', e => {
       if (opened) return;
