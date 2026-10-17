@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1b1033">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Truth Rally">
+<meta name="description" content="Play paddle ball against a friend on your own phones. Whoever misses has to answer the other's secret question.">
+<meta property="og:title" content="Truth Rally">
+<meta property="og:description" content="Bounce it back or spill the tea. Play me and find out.">
+<title>Truth Rally</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231b1033'/%3E%3Crect x='14' y='8' width='36' height='7' rx='3.5' fill='%235ec8ff'/%3E%3Crect x='14' y='49' width='36' height='7' rx='3.5' fill='%23ff7a59'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23fff3d6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column; each step is one screen; the court takes the full column during play. Single late-night arcade look by choice. */
+:root {
+  --bg: #1b1033;
+  --bg2: #2a1850;
+  --panel: rgba(45, 26, 84, 0.78);
+  --me: #ff7a59;
+  --them: #5ec8ff;
+  --ball: #fff3d6;
+  --ink: #f6eefe;
+  --muted: #b7a6d4;
+  --line: rgba(246, 238, 254, 0.14);
+  --bad: #ff5d7a;
+  --display: "Bungee", "Arial Black", Impact, sans-serif;
+  --body: "Rubik", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: radial-gradient(110% 70% at 50% 0%, var(--bg2) 0%, var(--bg) 65%) fixed, var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+}
+#root {
+  min-height: 100%;
+  box-sizing: border-box;
+  max-width: 500px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 28px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.brand { font-family: var(--display); font-size: 1.15rem; letter-spacing: .02em; line-height: 1; }
+.brand .a { color: var(--me); } .brand .b { color: var(--them); }
+.tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
+.screen { display: flex; flex-direction: column; gap: 14px; }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 2rem; line-height: 1.05; text-wrap: balance; }
+h2 { margin: 0; font-size: 1.15rem; font-weight: 700; text-wrap: balance; }
+p { margin: 0; color: var(--muted); line-height: 1.45; }
+.me { color: var(--me); } .them { color: var(--them); }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+label { font-weight: 600; font-size: .95rem; }
+input, textarea {
+  font: inherit; color: var(--ink); background: rgba(16, 8, 34, .65);
+  border: 1px solid rgba(183,166,212,.35); border-radius: 12px; padding: 10px 12px;
+  width: 100%; box-sizing: border-box;
+}
+textarea { resize: vertical; min-height: 76px; line-height: 1.4; }
+input:focus, textarea:focus { outline: 2px solid var(--me); outline-offset: 1px; border-color: transparent; }
+.code-in { font-family: var(--display); font-size: 2rem; letter-spacing: .3em; text-align: center; text-transform: uppercase; }
+.btn {
+  font: inherit; font-weight: 700; font-size: 1.05rem;
+  background: var(--me); color: #1b1033; border: 0; border-radius: 14px;
+  padding: 13px 20px; cursor: pointer; transition: transform .12s ease;
+  box-shadow: 0 6px 0 #b24b30;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #b24b30; }
+.btn.blue { background: var(--them); box-shadow: 0 6px 0 #2f84b0; }
+.btn.blue:active { box-shadow: 0 3px 0 #2f84b0; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(183,166,212,.4); box-shadow: none; }
+.btn:disabled { opacity: .45; cursor: default; }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > .btn { flex: 1 1 150px; }
+.codebig { font-family: var(--display); font-size: 3.4rem; letter-spacing: .18em; text-align: center; color: var(--ball); line-height: 1; padding-block: 6px; }
+.status { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.pip { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.pip.on { background: #6ee7a8; box-shadow: 0 0 10px #6ee7a8; }
+.pip.wait { animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.q { font-size: 1.2rem; font-weight: 600; line-height: 1.3; color: var(--ink); border-left: 4px solid var(--them); padding-left: 12px; overflow-wrap: anywhere; }
+.ans { font-size: 1.15rem; line-height: 1.35; color: var(--ball); overflow-wrap: anywhere; }
+.note { font-size: .86rem; color: var(--muted); }
+.err { color: var(--bad); font-size: .92rem; }
+.steps { margin: 0; padding-left: 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; line-height: 1.4; }
+.big-verdict { font-family: var(--display); font-size: 2.4rem; line-height: 1; }
+
+/* court */
+.stage {
+  position: relative; border-radius: 18px; overflow: hidden;
+  height: min(calc(100vh - 90px), 760px); height: min(calc(100dvh - 90px), 760px); min-height: 340px;
+  background: #140b28;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  box-shadow: 0 0 0 1px var(--line), 0 20px 50px rgba(0,0,0,.45);
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+.hud { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; font-variant-numeric: tabular-nums; }
+.hud div { display: flex; flex-direction: column; line-height: 1; gap: 3px; }
+.hud small { font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.hud b { font-family: var(--display); font-weight: 400; font-size: 1.25rem; }
+.hud .r { align-items: flex-end; }
+.flash { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font-family: var(--display); font-size: 4.2rem; color: var(--ball); text-shadow: 0 0 30px rgba(255,243,214,.5); }
+.flash.small { font-size: 2.2rem; color: var(--me); }
+@media (prefers-reduced-motion: reduce) { .btn, .pip.wait { transition: none; animation: none; } }
+</style>
+<style>
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+.share-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.share-row .btn { flex: 1 1 140px; font-size: .95rem; padding: 10px 14px; }
+.mute { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(16,8,34,.6); color: var(--ink); font-size: 1.1rem; line-height: 1; cursor: pointer; z-index: 2; }
+.banner { background: rgba(255,93,122,.14); border: 1px solid rgba(255,93,122,.4); color: var(--ink); border-radius: 12px; padding: 10px 12px; font-size: .92rem; }
+</style>
+</head>
+<body>
+<div id="root"><p>Loading…</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(() => {
+  /* ---------- constants ---------- */
+  const FH = 1.6;            // court height (width is 1)
+  const PB = FH - 0.1;       // bottom paddle line
+  const PT = 0.1;            // top paddle line
+  const PW = 0.13;           // paddle half-width
+  const R = 0.022;           // ball radius
+  const BASE = 0.9;          // starting speed (court widths per second)
+  const STEP_UP = 10;        // seconds between speed-ups
+  const GROW = 1.17;         // speed multiplier each step
+  const MAXMULT = 4;
+  const ID_PREFIX = 'truthrally-v1-';
+  const IDEAS = ["Who was your first crush?", "What's the last thing you searched?", "What's a secret you've never told me?", "What do you really think of me?", "What's your most embarrassing moment?"];
+
+  const root = document.getElementById('root');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const brand = tag => `<div class="top"><div class="brand"><span class="a">Truth</span> <span class="b">Rally</span></div><div class="tag">${tag}</div></div>`;
+
+  /* ---------- app state ---------- */
+  const L = {
+    screen: 'home', mode: null, role: null, code: '', joinPrefill: '',
+    name: '', q: '', ready: 0, answer: '', answerSent: 0, err: '', banner: '',
+    local: { p1: '', p2: '', q1: '', q2: '' }
+  };
+  try { L.name = localStorage.getItem('tr-name') || ''; } catch (e) {}
+  const G = freshSim();
+  let myX = 0.5, otherLocalX = 0.5;
+  let loopOn = false;
+  let lastLevelShown = 0, flashUntil = 0, overTimer = 0;
+
+  // networking
+  let peer = null, conn = null, friend = null, friendAt = 0, wasConnected = false;
+  const meState = { role: null, name: '', q: '', ready: 0, paddle: 0.5, answer: null };
+  let lastPaddleSent = 0, paddleDirty = false, lastStateSent = 0;
+
+  function freshSim() { return { phase: 'wait', round: 0, ball: null, speed: BASE, elapsed: 0, level: 0, count: 0, loser: null, hits: 0, walls: 0 }; }
+
+  /* ---------- simulation ---------- */
+  function resetBall(g) {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const ang = (Math.random() * 0.7 - 0.35);
+    g.speed = BASE;
+    g.ball = { x: 0.5, y: FH / 2, vx: Math.sin(ang) * BASE, vy: Math.cos(ang) * BASE * dir };
+    g.elapsed = 0; g.level = 0; g.hits = 0; g.walls = 0;
+  }
+  function stepSim(g, dt, bottomX, topX) {
+    g.elapsed += dt;
+    g.level = Math.floor(g.elapsed / STEP_UP);
+    g.speed = BASE * Math.min(MAXMULT, Math.pow(GROW, g.level));
+    const b = g.ball;
+    const sub = Math.max(1, Math.ceil(dt / (1 / 240)));
+    const h = dt / sub;
+    for (let i = 0; i < sub; i++) {
+      const m = Math.hypot(b.vx, b.vy) || 1;
+      b.vx = b.vx / m * g.speed; b.vy = b.vy / m * g.speed;
+      const py = b.y;
+      b.x += b.vx * h; b.y += b.vy * h;
+      if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); g.walls++; }
+      if (b.x > 1 - R) { b.x = 1 - R; b.vx = -Math.abs(b.vx); g.walls++; }
+      if (b.vy > 0 && py + R <= PB && b.y + R >= PB) {
+        if (Math.abs(b.x - bottomX) <= PW + R) { bounce(b, g.speed, (b.x - bottomX) / (PW + R), -1); b.y = PB - R; g.hits++; }
+      }
+      if (b.vy < 0 && py - R >= PT && b.y - R <= PT) {
+        if (Math.abs(b.x - topX) <= PW + R) { bounce(b, g.speed, (b.x - topX) / (PW + R), 1); b.y = PT + R; g.hits++; }
+      }
+      if (b.y - R > FH) return 'bottom';
+      if (b.y + R < 0) return 'top';
+    }
+    return null;
+  }
+  function bounce(b, speed, off, dirY) {
+    const ang = clamp(off, -1, 1) * 1.0;
+    b.vx = Math.sin(ang) * speed;
+    b.vy = Math.cos(ang) * speed * dirY;
+  }
+
+  /* ---------- networking (PeerJS, phone to phone) ---------- */
+  function newCode() {
+    const a = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let s = ''; for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)];
+    return s;
+  }
+  function netReady() { return typeof window.Peer === 'function'; }
+  function send(obj) { if (conn && conn.open) { try { conn.send(obj); } catch (e) {} } }
+  function pushMe(patch) {
+    Object.assign(meState, patch);
+    if ('paddle' in patch && Object.keys(patch).length === 1) { paddleDirty = true; return; }
+    send({ t: 'me', d: patch });
+  }
+  function onData(msg) {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.t === 'busy') { L.err = 'That game already has two players. Ask your friend for a new code.'; leave(); go('join'); return; }
+    if ((msg.t === 'me' || msg.t === 'state') && msg.d && typeof msg.d === 'object') {
+      friend = Object.assign(friend || {}, msg.d);
+      if (msg.t === 'state') friendAt = Date.now();
+    }
+  }
+  function attach(c) {
+    conn = c;
+    c.on('open', () => { wasConnected = true; friend = friend || {}; send({ t: 'me', d: meState }); refresh(); });
+    c.on('data', onData);
+    c.on('close', friendGone);
+    c.on('error', friendGone);
+  }
+  function friendGone() {
+    if (!wasConnected) return;
+    conn = null; friend = null; wasConnected = false;
+    if (L.mode !== 'online') return;
+    if (L.role === 'host') {
+      Object.assign(G, freshSim()); L.ready = 0; L.answerSent = 0; meState.ready = 0;
+      L.banner = 'Your friend left. Keep this screen open and share the code again to play someone new.';
+      go('lobby');
+    } else {
+      leave(); L.err = 'The game ended because your friend left or lost connection.'; go('home');
+    }
+  }
+  function createGame(attempt = 0) {
+    if (!netReady()) { L.err = "Couldn't load the online connection. Check your internet and reload."; render(); return; }
+    leave();
+    const code = newCode();
+    L.mode = 'online'; L.role = 'host'; L.code = code;
+    Object.assign(meState, { role: 'host', name: L.name.trim(), q: L.q.trim(), ready: 0, paddle: 0.5, answer: null });
+    Object.assign(G, freshSim());
+    L.screen = 'connecting'; render();
+    peer = new Peer(ID_PREFIX + code, { debug: 0 });
+    peer.on('open', () => { go('lobby'); startLoop(); });
+    peer.on('connection', c => {
+      if (conn && conn.open) { c.on('open', () => { try { c.send({ t: 'busy' }); } catch (e) {} setTimeout(() => c.close(), 400); }); return; }
+      attach(c);
+    });
+    peer.on('error', e => {
+      if (e && e.type === 'unavailable-id' && attempt < 4) { createGame(attempt + 1); return; }
+      if (L.screen === 'connecting') { leave(); L.err = "Couldn't create a game. Check your internet and try again."; go('home'); }
+    });
+    peer.on('disconnected', () => { try { peer && !peer.destroyed && peer.reconnect(); } catch (e) {} });
+  }
+  function joinGame(code) {
+    if (!netReady()) { L.err = "Couldn't load the online connection. Check your internet and reload."; render(); return; }
+    leave();
+    L.mode = 'online'; L.role = 'guest'; L.code = code;
+    Object.assign(meState, { role: 'guest', name: L.name.trim(), q: L.q.trim(), ready: 0, paddle: 0.5, answer: null });
+    L.screen = 'connecting'; render();
+    peer = new Peer({ debug: 0 });
+    let opened = false;
+    peer.on('open', () => {
+      const c = peer.connect(ID_PREFIX + code, { reliable: true, serialization: 'json' });
+      attach(c);
+      c.on('open', () => { opened = true; go('lobby'); startLoop(); });
+      setTimeout(() => { if (!opened && L.screen === 'connecting') { leave(); L.joinPrefill = code; L.err = "Couldn't reach that game. Make sure your friend still has it open, then try again. Wi-Fi works best."; go('join'); } }, 15000);
+    });
+    peer.on('error', e => {
+      if (opened) return;
+      leave(); L.joinPrefill = code;
+      L.err = e && e.type === 'peer-unavailable' ? 'No game with that code. Check the code, and make sure your friend still has the game open.' : "Couldn't connect. Check your internet and try again.";
+      go('join');
+    });
+  }
+  function friendPresence() { return conn && conn.open ? friend : null; }
+  function hostState() {
+    if (L.mode === 'local' || L.role === 'host') return G;
+    const hp = friendPresence();
+    return hp && hp.phase ? hp : null;
+  }
+  function inviteLink() { return location.origin + location.pathname + '?join=' + L.code.toUpperCase(); }
+
+  /* ---------- screens ---------- */
+  function go(screen) { L.screen = screen; render(); window.scrollTo(0, 0); L.err = ''; }
+
+  function render() {
+    const s = L.screen;
+    let h = '';
+    if (s === 'home') {
+      h = brand('2 players') + `<div class="screen">
+        <h1>Bounce it back or <span class="me">spill the tea</span></h1>
+        <p>Each of you writes a secret question for the other. Then you play paddle ball on your own phones. Whoever misses first has to answer.</p>
+        <div class="stack">
+          <button class="btn" id="b-create" type="button">Create a game</button>
+          <button class="btn blue" id="b-join" type="button">Join with a code</button>
+          <button class="btn ghost" id="b-local" type="button">Play on one phone</button>
+        </div>
+        ${L.err ? `<div class="err">${esc(L.err)}</div>` : ''}
+        <p class="note">Create a game, send your friend the code or invite link, and play live on two phones. The ball speeds up every 10 seconds.</p>
+      </div>`;
+    }
+    if (s === 'connecting') {
+      h = brand('Connecting') + `<div class="screen"><h1>Connecting…</h1><p>${L.role === 'host' ? 'Setting up your game.' : 'Finding your friend\'s game.'}</p><button class="btn ghost" id="b-home" type="button">Cancel</button></div>`;
+    }
+    if (s === 'join') {
+      h = brand('Join') + `<div class="screen">
+        <h1>Enter your friend's code</h1>
+        <div class="box">
+          <input id="f-code" class="code-in" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="····" aria-label="Game code" value="${esc(L.joinPrefill.toUpperCase())}">
+        </div>
+        ${L.err ? `<div class="err">${esc(L.err)}</div>` : ''}
+        <div class="row"><button class="btn blue" id="b-dojoin" type="button">Join game</button><button class="btn ghost" id="b-home" type="button">Back</button></div>
+      </div>`;
+    }
+    if (s === 'lobby') {
+      const host = L.role === 'host';
+      h = brand(host ? 'Your game' : 'Joined') + `<div class="screen">
+        ${L.banner ? `<div class="banner">${esc(L.banner)}</div>` : ''}
+        ${host ? `<div class="box"><p>Send this code to your friend</p><div class="codebig">${esc(L.code.toUpperCase())}</div>
+          <div class="share-row"><button class="btn blue" id="b-share" type="button">Share invite link</button><button class="btn ghost" id="b-copy" type="button">Copy link</button></div>
+          <p class="note" id="share-st">Keep this screen open until your friend joins.</p>
+          <input id="share-fallback" readonly hidden></div>` : `<h1>Game ${esc(L.code.toUpperCase())}</h1>`}
+        <div class="box"><div class="status"><span class="pip wait" id="pip"></span><span id="st-friend">Waiting for your friend to join…</span></div></div>
+        <div class="box">
+          <div class="field"><label for="f-name">Your name</label><input id="f-name" maxlength="20" placeholder="What your friend calls you" value="${esc(L.name)}"></div>
+          <div class="field"><label for="f-q">Your secret question for them</label><textarea id="f-q" maxlength="140" placeholder="They only see it if they lose">${esc(L.q)}</textarea></div>
+          <div class="row" style="gap:8px">${IDEAS.map((q, i) => `<button class="btn ghost" style="flex:0 1 auto;font-size:.82rem;padding:6px 10px;font-weight:500" type="button" data-idea="${i}">${esc(q)}</button>`).join('')}</div>
+        </div>
+        <div class="err" id="lob-err">${esc(L.err)}</div>
+        <button class="btn" id="b-ready" type="button">I'm ready</button>
+        <p class="note" id="st-ready">The game starts when you're both ready.</p>
+        <button class="btn ghost" id="b-leave" type="button">Leave game</button>
+      </div>`;
+    }
+    if (s === 'game') {
+      h = `<div class="stage" id="stage">
+          <canvas id="cv" aria-label="Paddle court"></canvas>
+          <div class="hud"><div><small>Speed</small><b id="h-lvl">1</b></div><div class="r"><small>Faster in</small><b id="h-next">10</b></div></div>
+          <button class="mute" id="b-mute" type="button" aria-label="Sound on or off"></button>
+          <div class="flash" id="flash" hidden></div>
+        </div>
+        <p class="note">${L.mode === 'local' ? 'Each player drags on their own half of the screen.' : 'Drag anywhere to move your paddle. You are always at the bottom.'}</p>`;
+    }
+    if (s === 'result') h = resultHTML();
+    if (s === 'local-setup') {
+      const l = L.local;
+      h = brand('One phone') + `<div class="screen">
+        <h1>Two players, one screen</h1>
+        <p>Take turns writing. Pass the phone so the other player doesn't peek.</p>
+        <div class="box">
+          <h2 class="me">Bottom player</h2>
+          <div class="field"><label for="f-p1">Name</label><input id="f-p1" maxlength="20" value="${esc(l.p1)}" placeholder="Player 1"></div>
+          <div class="field"><label for="f-q1">Question for the top player</label><textarea id="f-q1" maxlength="140" placeholder="Asked if they lose">${esc(l.q1)}</textarea></div>
+        </div>
+        <div class="box">
+          <h2 class="them">Top player</h2>
+          <div class="field"><label for="f-p2">Name</label><input id="f-p2" maxlength="20" value="${esc(l.p2)}" placeholder="Player 2"></div>
+          <div class="field"><label for="f-q2">Question for the bottom player</label><textarea id="f-q2" maxlength="140" placeholder="Asked if they lose">${esc(l.q2)}</textarea></div>
+        </div>
+        ${L.err ? `<div class="err">${esc(L.err)}</div>` : ''}
+        <div class="row"><button class="btn" id="b-lstart" type="button">Start</button><button class="btn ghost" id="b-home" type="button">Back</button></div>
+      </div>`;
+    }
+    root.innerHTML = h;
+    wire();
+    if (s === 'game') setupCanvas();
+    refresh();
+  }
+
+  function resultHTML() {
+    if (L.mode === 'local') {
+      const l = L.local;
+      const loserTop = G.loser === 'top';
+      const loser = (loserTop ? l.p2 : l.p1) || (loserTop ? 'Top player' : 'Bottom player');
+      const winner = (loserTop ? l.p1 : l.p2) || (loserTop ? 'Bottom player' : 'Top player');
+      const q = loserTop ? l.q1 : l.q2;
+      return brand('Round over') + `<div class="screen">
+        <div class="big-verdict ${loserTop ? 'them' : 'me'}">${esc(loser)} missed!</div>
+        <div class="box"><p>${esc(winner)} asks</p><div class="q">${esc(q)}</div><p class="note">Answer out loud. No skipping.</p></div>
+        <div class="row"><button class="btn" id="b-lagain" type="button">Rematch</button><button class="btn ghost" id="b-lnew" type="button">New questions</button></div>
+        <button class="btn ghost" id="b-home" type="button">Home</button>
+      </div>`;
+    }
+    const hs = hostState();
+    const fp = friendPresence();
+    const fname = esc((fp && fp.name) || 'Your friend');
+    const iLost = hs && hs.loser === L.role;
+    if (iLost) {
+      return brand('You missed') + `<div class="screen">
+        <div class="big-verdict me">You missed!</div>
+        <div class="box"><p>${fname} asks</p><div class="q" id="r-q">${esc((fp && fp.q) || '…')}</div>
+          <div class="field"><label for="f-ans">Your answer</label><textarea id="f-ans" maxlength="280" placeholder="Be honest…">${esc(L.answer)}</textarea></div>
+          <button class="btn" id="b-send" type="button">Send answer</button>
+          <p class="note" id="ans-st"></p>
+        </div>
+        <button class="btn blue" id="b-again" type="button">Play again</button>
+        <button class="btn ghost" id="b-leave" type="button">Leave game</button>
+      </div>`;
+    }
+    return brand('You won') + `<div class="screen">
+      <div class="big-verdict them">You win!</div>
+      <p>${fname} missed, so they have to answer your question.</p>
+      <div class="box"><p>You asked</p><div class="q">${esc(L.q)}</div><p>${fname}'s answer</p><div class="ans" id="r-ans">Waiting for their answer…</div></div>
+      <button class="btn blue" id="b-again" type="button">Play again</button>
+      <button class="btn ghost" id="b-leave" type="button">Leave game</button>
+    </div>`;
+  }
+
+  function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
+
+  function wire() {
+    on('b-home', () => { leave(); go('home'); });
+    on('b-create', () => createGame());
+    on('b-join', () => go('join'));
+    on('b-dojoin', () => {
+      const code = (document.getElementById('f-code').value || '').trim().toLowerCase();
+      if (!/^[a-z0-9]{4}$/.test(code)) { L.err = 'Codes are 4 letters or numbers.'; render(); L.err = ''; return; }
+      joinGame(code);
+    });
+    on('b-local', () => { leave(); L.mode = 'local'; go('local-setup'); });
+    on('b-leave', () => { leave(); go('home'); });
+
+    on('b-share', async () => {
+      const st = document.getElementById('share-st');
+      const data = { title: 'Truth Rally', text: `Play Truth Rally with me! Code: ${L.code.toUpperCase()}`, url: inviteLink() };
+      if (navigator.share) { try { await navigator.share(data); st.textContent = 'Shared. Keep this screen open until your friend joins.'; } catch (e) {} }
+      else copyLink();
+    });
+    on('b-copy', copyLink);
+
+    const fn = document.getElementById('f-name'), fq = document.getElementById('f-q');
+    if (fn) fn.addEventListener('input', () => { L.name = fn.value; try { localStorage.setItem('tr-name', fn.value.trim()); } catch (e) {} pushMe({ name: fn.value.trim() }); });
+    if (fq) fq.addEventListener('input', () => { L.q = fq.value; pushMe({ q: fq.value.trim() }); });
+    root.querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => { L.q = IDEAS[+b.dataset.idea]; fq.value = L.q; pushMe({ q: L.q }); }));
+    on('b-ready', () => {
+      if (!L.name.trim()) { setLobbyErr('Add your name first.'); return; }
+      if (!L.q.trim()) { setLobbyErr('Write a question for your friend, or tap an idea.'); return; }
+      const hs = hostState();
+      const round = L.role === 'host' ? G.round : (hs ? hs.round || 0 : 0);
+      L.ready = round + 1;
+      pushMe({ name: L.name.trim(), q: L.q.trim(), ready: L.ready });
+      setLobbyErr('');
+      refresh();
+    });
+
+    const fa = document.getElementById('f-ans');
+    if (fa) fa.addEventListener('input', () => { L.answer = fa.value; });
+    on('b-send', () => {
+      if (!L.answer.trim()) { document.getElementById('ans-st').textContent = 'Type your answer first.'; return; }
+      const hs = hostState();
+      L.answerSent = hs ? hs.round : 0;
+      pushMe({ answer: { r: L.answerSent, text: L.answer.trim().slice(0, 280) } });
+      refresh();
+    });
+    on('b-again', () => { L.answer = ''; L.ready = 0; L.banner = ''; pushMe({ ready: 0 }); go('lobby'); });
+
+    ['p1', 'p2', 'q1', 'q2'].forEach(k => { const el = document.getElementById('f-' + k); if (el) el.addEventListener('input', () => { L.local[k] = el.value; }); });
+    on('b-lstart', () => {
+      const l = L.local;
+      if (!l.q1.trim() || !l.q2.trim()) { L.err = 'Both players need to write a question.'; render(); L.err = ''; return; }
+      startLocalRound();
+    });
+    on('b-lagain', startLocalRound);
+    on('b-lnew', () => { L.local.q1 = ''; L.local.q2 = ''; go('local-setup'); });
+  }
+
+  function copyLink() {
+    const st = document.getElementById('share-st'), fb = document.getElementById('share-fallback');
+    const link = inviteLink();
+    const fallback = () => { fb.hidden = false; fb.value = link; fb.focus(); fb.select(); st.textContent = 'Copy this link and send it to your friend.'; };
+    try { navigator.clipboard.writeText(link).then(() => { st.textContent = 'Link copied. Paste it in a DM or on your story.'; }, fallback); } catch (e) { fallback(); }
+  }
+
+  function setLobbyErr(t) { const e = document.getElementById('lob-err'); if (e) e.textContent = t; }
+
+  function leave() {
+    wasConnected = false;
+    if (conn) { try { conn.close(); } catch (e) {} }
+    if (peer) { try { peer.destroy(); } catch (e) {} }
+    peer = null; conn = null; friend = null;
+    L.role = null; L.code = ''; L.ready = 0; L.answerSent = 0; L.answer = ''; L.mode = null; L.banner = '';
+    meState.ready = 0; meState.answer = null;
+    Object.assign(G, freshSim());
+  }
+
+  function startLocalRound() {
+    L.mode = 'local';
+    Object.assign(G, freshSim());
+    G.round = 1; G.phase = 'count'; G.count = 3; resetBall(G);
+    myX = 0.5; otherLocalX = 0.5; lastLevelShown = 0;
+    go('game');
+    startLoop();
+  }
+
+  /* ---------- periodic DOM refresh ---------- */
+  function refresh() {
+    if (L.mode !== 'online') return;
+    const fp = friendPresence();
+    const pip = document.getElementById('pip'), st = document.getElementById('st-friend');
+    if (pip && st) {
+      if (fp) { pip.className = 'pip on'; st.textContent = `${fp.name || 'Your friend'} is here${fp.ready ? ' and ready' : ''}.`; }
+      else { pip.className = 'pip wait'; st.textContent = L.role === 'host' ? 'Waiting for your friend to join…' : 'Connecting to your friend…'; }
+    }
+    const sr = document.getElementById('st-ready');
+    const rb = document.getElementById('b-ready');
+    if (sr) sr.textContent = L.ready ? (fp && fp.ready ? 'Starting…' : "You're ready. Waiting for your friend.") : "The game starts when you're both ready.";
+    if (rb) rb.textContent = L.ready ? 'Update my question' : "I'm ready";
+    const hs = hostState();
+    const ra = document.getElementById('r-ans');
+    if (ra && fp && hs && fp.answer && fp.answer.r === hs.round) ra.textContent = fp.answer.text;
+    const as = document.getElementById('ans-st');
+    if (as && L.answerSent && hs && L.answerSent === hs.round) as.textContent = 'Sent. Your friend can see your answer now.';
+    const rq = document.getElementById('r-q');
+    if (rq && fp && fp.q) rq.textContent = fp.q;
+  }
+  setInterval(refresh, 300);
+
+  /* ---------- canvas ---------- */
+  let cv = null, ctx = null, CW = 0, CH = 0, sc = 1, ox = 0, oy = 0, ro = null;
+  function setupCanvas() {
+    const stage = document.getElementById('stage');
+    cv = document.getElementById('cv'); ctx = cv.getContext('2d');
+    const fit = () => {
+      const r = stage.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+      CW = r.width; CH = r.height; cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      sc = Math.min(CW / 1, CH / FH); ox = (CW - sc) / 2; oy = (CH - sc * FH) / 2;
+    };
+    if (ro) ro.disconnect();
+    ro = new ResizeObserver(fit); ro.observe(stage); fit();
+    const mb = document.getElementById('b-mute');
+    muteLabel();
+    if (mb) mb.addEventListener('click', () => { muted = !muted; try { localStorage.setItem('tr-mute', muted ? '1' : '0'); } catch (e) {} unlockAudio(); muteLabel(); });
+    const handle = e => {
+      if (e.target.closest && e.target.closest('#b-mute')) return;
+      e.preventDefault();
+      const r = cv.getBoundingClientRect();
+      const sx = (e.clientX - r.left - ox) / sc, sy = (e.clientY - r.top - oy) / sc;
+      if (L.mode === 'local') {
+        if (sy < FH / 2) otherLocalX = clamp(sx, PW, 1 - PW); else myX = clamp(sx, PW, 1 - PW);
+      } else {
+        const fx = L.role === 'guest' ? 1 - sx : sx;
+        myX = clamp(fx, PW, 1 - PW);
+        pushMe({ paddle: myX });
+      }
+    };
+    stage.addEventListener('pointerdown', handle);
+    stage.addEventListener('pointermove', handle);
+    stage.scrollIntoView({ block: 'center' });
+  }
+
+  const keys = new Set();
+  addEventListener('keydown', e => { const k = e.key.toLowerCase(); if (['arrowleft', 'arrowright', 'a', 'd'].includes(k) && L.screen === 'game') { keys.add(k); e.preventDefault(); } });
+  addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+  function keyMove(dt) {
+    const v = 1.4 * dt;
+    const flip = L.role === 'guest' ? -1 : 1;
+    let moved = false;
+    if (keys.has('arrowleft')) { myX = clamp(myX - v * flip, PW, 1 - PW); moved = true; }
+    if (keys.has('arrowright')) { myX = clamp(myX + v * flip, PW, 1 - PW); moved = true; }
+    if (L.mode === 'local') {
+      if (keys.has('a')) otherLocalX = clamp(otherLocalX - v, PW, 1 - PW);
+      if (keys.has('d')) otherLocalX = clamp(otherLocalX + v, PW, 1 - PW);
+    } else if (moved) pushMe({ paddle: myX });
+  }
+
+  /* ---------- sound + vibration ---------- */
+  let actx = null, muted = false;
+  try { muted = localStorage.getItem('tr-mute') === '1'; } catch (e) {}
+  function unlockAudio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+  }
+  addEventListener('pointerdown', unlockAudio, { passive: true });
+  addEventListener('keydown', unlockAudio);
+  function tone(freq, dur, type, vol, slideTo, delay) {
+    if (muted || !actx || actx.state !== 'running') return;
+    const t0 = actx.currentTime + (delay || 0);
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(actx.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function sfx(kind, level) {
+    const up = Math.min(8, level || 0) * 35;
+    if (kind === 'paddle') tone(520 + up, 0.08, 'square', 0.13, 760 + up);
+    else if (kind === 'wall') tone(330, 0.05, 'triangle', 0.11);
+    else if (kind === 'miss') { tone(420, 0.45, 'sawtooth', 0.12, 80); }
+    else if (kind === 'faster') { tone(660, 0.07, 'square', 0.09); tone(880, 0.09, 'square', 0.09, null, 0.08); }
+    else if (kind === 'go') tone(880, 0.12, 'triangle', 0.12);
+  }
+  function buzz(pattern) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
+  const heard = { round: -1, hits: 0, walls: 0, phase: '' };
+  function listen(hs, iLost) {
+    if (!hs) return;
+    if (hs.round !== heard.round) { heard.round = hs.round; heard.hits = hs.hits || 0; heard.walls = hs.walls || 0; heard.phase = hs.phase; }
+    if ((hs.hits || 0) > heard.hits) sfx('paddle', hs.level);
+    if ((hs.walls || 0) > heard.walls) sfx('wall');
+    heard.hits = hs.hits || 0; heard.walls = hs.walls || 0;
+    if (hs.phase !== heard.phase) {
+      if (hs.phase === 'play') sfx('go');
+      if (hs.phase === 'over') { sfx('miss'); if (iLost) buzz([220, 90, 320]); }
+      heard.phase = hs.phase;
+    }
+  }
+  function muteLabel() { const b = document.getElementById('b-mute'); if (b) b.textContent = muted ? '🔇' : '🔊'; }
+
+  /* ---------- main loop ---------- */
+  function startLoop() {
+    if (loopOn) return; loopOn = true;
+    let last = performance.now();
+    const f = now => { const dt = Math.min(0.05, (now - last) / 1000); last = now; tick(dt, now); if (L.mode) requestAnimationFrame(f); else loopOn = false; };
+    requestAnimationFrame(f);
+  }
+
+  function tick(dt, now) {
+    if (L.screen === 'game') keyMove(dt);
+    if (L.mode === 'local') {
+      if (G.phase === 'count') { G.count -= dt; if (G.count <= -0.3) G.phase = 'play'; }
+      else if (G.phase === 'play') {
+        const miss = stepSim(G, dt, myX, otherLocalX);
+        if (miss) { G.phase = 'over'; G.loser = miss; setTimeout(() => { if (L.mode === 'local') go('result'); }, 700); }
+      }
+      if (L.screen === 'game') { listen(G, true); draw(G.ball, G, myX, otherLocalX, false); }
+      return;
+    }
+    if (L.mode !== 'online') return;
+
+    if (paddleDirty && now - lastPaddleSent > 30) { send({ t: 'me', d: { paddle: +myX.toFixed(4) } }); paddleDirty = false; lastPaddleSent = now; }
+
+    const fp = friendPresence();
+    if (L.role === 'host') {
+      if ((G.phase === 'wait' || G.phase === 'over') && fp && L.ready === G.round + 1 && fp.ready === G.round + 1) {
+        G.round++; G.phase = 'count'; G.count = 3; G.loser = null; resetBall(G); lastLevelShown = 0;
+      }
+      if (G.phase === 'count') { G.count -= dt; if (G.count <= -0.3) G.phase = 'play'; }
+      else if (G.phase === 'play') {
+        const gx = fp && typeof fp.paddle === 'number' ? clamp(fp.paddle, PW, 1 - PW) : 0.5;
+        const miss = stepSim(G, dt, myX, gx);
+        if (miss) { G.phase = 'over'; G.loser = miss === 'bottom' ? 'host' : 'guest'; }
+      }
+      if (now - lastStateSent > 33) {
+        lastStateSent = now;
+        send({ t: 'state', d: { phase: G.phase, round: G.round, count: +G.count.toFixed(2), level: G.level, elapsed: +G.elapsed.toFixed(2), loser: G.loser, hits: G.hits, walls: G.walls, ball: G.ball ? { x: +G.ball.x.toFixed(4), y: +G.ball.y.toFixed(4), vx: +G.ball.vx.toFixed(4), vy: +G.ball.vy.toFixed(4) } : null } });
+      }
+    }
+    const hs = hostState();
+    if (hs) {
+      const live = hs.phase === 'count' || hs.phase === 'play';
+      if (live && L.screen !== 'game' && L.ready === hs.round) { lastLevelShown = 0; go('game'); }
+      if (hs.phase === 'over' && L.screen === 'game' && L.ready === hs.round && !overTimer) {
+        overTimer = setTimeout(() => { overTimer = 0; if (L.screen === 'game') go('result'); }, 700);
+      }
+    }
+    if (L.screen === 'game' && hs) {
+      let ball = hs.ball;
+      if (L.role === 'guest' && ball && hs.phase === 'play') {
+        const age = Math.min(0.15, Math.max(0, (Date.now() - friendAt) / 1000));
+        ball = extrapolate(ball, age);
+      }
+      const otherX = fp && typeof fp.paddle === 'number' ? fp.paddle : 0.5;
+      listen(hs, hs.loser === L.role);
+      draw(ball, hs, myX, otherX, L.role === 'guest');
+    }
+  }
+
+  function extrapolate(b, t) {
+    let x = b.x + b.vx * t, y = b.y + b.vy * t;
+    if (x < R) x = 2 * R - x;
+    if (x > 1 - R) x = 2 * (1 - R) - x;
+    return { x, y };
+  }
+
+  /* ---------- drawing ---------- */
+  function draw(ball, hs, mineX, otherX, flipped) {
+    if (!ctx) return;
+    const P = (x, y) => flipped ? [ox + (1 - x) * sc, oy + (FH - y) * sc] : [ox + x * sc, oy + y * sc];
+    ctx.fillStyle = '#140b28'; ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = '#1e1239'; ctx.fillRect(ox, oy, sc, FH * sc);
+    ctx.strokeStyle = 'rgba(246,238,254,0.12)'; ctx.lineWidth = 2; ctx.setLineDash([10, 12]);
+    ctx.beginPath(); ctx.moveTo(ox, oy + FH / 2 * sc); ctx.lineTo(ox + sc, oy + FH / 2 * sc); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(ox + sc / 2, oy + FH / 2 * sc, sc * 0.14, 0, Math.PI * 2); ctx.stroke();
+    const local = L.mode === 'local';
+    const myLineY = local || L.role === 'host' ? PB : PT;
+    const otherLineY = myLineY === PB ? PT : PB;
+    paddle(P, mineX, myLineY, '#ff7a59');
+    paddle(P, otherX, otherLineY, '#5ec8ff');
+    ctx.font = `600 ${Math.round(13 * Math.max(1, sc / 360))}px Rubik, system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(246,238,254,0.55)';
+    const fp = friendPresence();
+    const myName = local ? (L.local.p1 || 'Bottom') : (L.name || 'You');
+    const theirName = local ? (L.local.p2 || 'Top') : ((fp && fp.name) || 'Friend');
+    ctx.fillText(myName, ox + sc / 2, oy + FH * sc - 10);
+    ctx.save(); ctx.translate(ox + sc / 2, oy + 18); if (local) ctx.rotate(Math.PI); ctx.fillText(theirName, 0, local ? -4 : 4); ctx.restore();
+    if (ball) {
+      const [x, y] = P(ball.x, ball.y), r = R * sc;
+      const gr = ctx.createRadialGradient(x, y, 0, x, y, r * 3.5);
+      gr.addColorStop(0, 'rgba(255,243,214,0.55)'); gr.addColorStop(1, 'rgba(255,243,214,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r * 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff3d6'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    const next = Math.max(0, STEP_UP - ((hs.elapsed || 0) % STEP_UP));
+    const le = document.getElementById('h-lvl'), ne = document.getElementById('h-next'), fl = document.getElementById('flash');
+    if (le) le.textContent = (hs.level || 0) + 1;
+    if (ne) ne.textContent = hs.phase === 'play' ? Math.ceil(next) : STEP_UP;
+    if (fl) {
+      if (hs.phase === 'count') { fl.hidden = false; fl.className = 'flash'; fl.textContent = hs.count > 0 ? Math.ceil(hs.count) : 'Go!'; }
+      else if (hs.phase === 'play' && (hs.level || 0) > lastLevelShown) { lastLevelShown = hs.level; flashUntil = performance.now() + 900; sfx('faster'); }
+      if (hs.phase === 'play') { if (performance.now() < flashUntil) { fl.hidden = false; fl.className = 'flash small'; fl.textContent = 'Faster!'; } else fl.hidden = true; }
+      if (hs.phase === 'over') { fl.hidden = false; fl.className = 'flash small'; fl.textContent = 'Miss!'; }
+    }
+  }
+  function paddle(P, x, lineY, color) {
+    const [a] = P(x - PW, lineY), [b] = P(x + PW, lineY);
+    const [, y] = P(x, lineY);
+    const left = Math.min(a, b), w = Math.abs(b - a), hgt = Math.max(8, sc * 0.03);
+    const drawTop = y > oy + FH * sc / 2 ? y : y - hgt;
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 14;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(left, drawTop, w, hgt, hgt / 2); else ctx.rect(left, drawTop, w, hgt);
+    ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  /* ---------- boot ---------- */
+  const qp = new URLSearchParams(location.search).get('join');
+  if (qp && /^[a-z0-9]{4}$/i.test(qp)) { L.joinPrefill = qp.toLowerCase(); L.screen = 'join'; }
+  render();
+  addEventListener('beforeunload', () => { try { peer && peer.destroy(); } catch (e) {} });
+})();
+</script>
+</body>
+</html>
